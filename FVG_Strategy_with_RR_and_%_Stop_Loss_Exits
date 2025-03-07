@@ -1,0 +1,67 @@
+//@version=5
+strategy("FVG Strategy with RR and % Stop Loss Exits", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// Parameters for Fair Value Gap (FVG) and Moving Average (MA)
+fvg_length = input.int(5, title="Fair Value Gap Length", minval=1)
+ma_length = input.int(50, title="50-period Moving Average Length")
+risk_reward_ratio = input.float(2.0, title="Risk to Reward Ratio", minval=1.0)  // 2:1 Risk to Reward ratio
+stop_loss_pct = input.float(1.5, title="Stop Loss Percentage", minval=0.1)  // Stop loss percentage (1.5% for example)
+take_profit_pct = risk_reward_ratio * stop_loss_pct  // Automatically sets take profit at 2:1 RR ratio
+
+// Parameters for RSI and MACD Filters
+rsi_length = input.int(14, title="RSI Length")
+rsi_threshold = input.int(50, title="RSI Threshold", minval=0, maxval=100)  // Default threshold for momentum (50)
+macd_short_length = input.int(12, title="MACD Short Length")
+macd_long_length = input.int(26, title="MACD Long Length")
+macd_signal_length = input.int(9, title="MACD Signal Length")
+
+// Fair Value Gap Detection
+fvg_up = low[1] > high
+fvg_down = high[1] < low
+
+// 50-period Moving Average (MA) for Entry Conditions
+ma = ta.sma(close, ma_length)
+
+// Higher timeframe trend filter (using 50-period MA on 1-hour chart)
+higher_timeframe_ma = request.security(syminfo.tickerid, "60", ta.sma(close, ma_length))
+
+// RSI Momentum Filter
+rsi = ta.rsi(close, rsi_length)
+
+// MACD Filter for momentum confirmation
+[macd_line, signal_line, _] = ta.macd(close, macd_short_length, macd_long_length, macd_signal_length)
+macd_bullish = macd_line > signal_line
+macd_bearish = macd_line < signal_line
+
+// Entry conditions with trend filter, RSI filter, and MACD filter
+long_condition = fvg_up and close > ma and close > higher_timeframe_ma and rsi > rsi_threshold and macd_bullish  // Long only if RSI > 50 and MACD bullish
+short_condition = fvg_down and close < ma and close < higher_timeframe_ma and rsi < rsi_threshold and macd_bearish  // Short only if RSI < 50 and MACD bearish
+
+// Entry prices
+long_entry_price = strategy.position_avg_price
+short_entry_price = strategy.position_avg_price
+
+// Stop Loss and Take Profit Calculation
+long_stop_loss = long_entry_price * (1 - stop_loss_pct / 100)  // Stop loss 1.5% below entry for long
+short_stop_loss = short_entry_price * (1 + stop_loss_pct / 100)  // Stop loss 1.5% above entry for short
+
+long_take_profit = long_entry_price + (long_entry_price - long_stop_loss) * risk_reward_ratio  // 2:1 risk-to-reward ratio for long
+short_take_profit = short_entry_price - (short_stop_loss - short_entry_price) * risk_reward_ratio  // 2:1 risk-to-reward ratio for short
+
+// Entry logic
+if (long_condition)
+    strategy.entry("Long", strategy.long)
+
+if (short_condition)
+    strategy.entry("Short", strategy.short)
+
+// Exit logic based on fixed stop loss and take profit
+strategy.exit("Long Exit", "Long", stop=long_stop_loss, limit=long_take_profit)
+strategy.exit("Short Exit", "Short", stop=short_stop_loss, limit=short_take_profit)
+
+// Plotting FVG signals and MA
+plotshape(series=fvg_up, location=location.belowbar, color=color.green, style=shape.labelup, title="Bullish FVG")
+plotshape(series=fvg_down, location=location.abovebar, color=color.red, style=shape.labeldown, title="Bearish FVG")
+plot(ma, color=color.blue, title="50-period MA")
+plot(higher_timeframe_ma, color=color.orange, title="Higher Timeframe Trend MA")
+hline(rsi_threshold, "RSI Threshold", color=color.purple)
