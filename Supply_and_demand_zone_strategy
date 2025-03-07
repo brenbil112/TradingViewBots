@@ -1,0 +1,76 @@
+//@version=5
+strategy("Supply & Demand Zone Strategy", overlay=true)
+
+// ATR Settings
+atrLength = 14
+atrMult = 1.5
+atrValue = ta.atr(atrLength)
+atrSMA = ta.sma(atrValue, 14) // ATR trend filter
+
+// Identify Swing Highs & Lows
+swingHigh = ta.highest(high, 10)
+swingLow = ta.lowest(low, 10)
+
+// Define Supply Zone (Resistance)
+supplyZoneHigh = swingHigh
+supplyZoneLow = swingHigh - (atrValue * 0.5)
+
+// Define Demand Zone (Support)
+demandZoneLow = swingLow
+demandZoneHigh = swingLow + (atrValue * 0.5)
+
+// Plot Supply and Demand Zones
+bgcolor(close > demandZoneLow and close < demandZoneHigh ? color.new(color.green, 80) : na)
+bgcolor(close < supplyZoneHigh and close > supplyZoneLow ? color.new(color.red, 80) : na)
+
+// Confirmation Candlestick Patterns
+bullishEngulfing = close > open and close[1] < open[1] and close > high[1]
+bearishEngulfing = close < open and close[1] > open[1] and close < low[1]
+
+// Entry Conditions with ATR filter and confirmation candle
+longCondition = ta.crossover(close, demandZoneLow) and bullishEngulfing and atrValue > atrSMA
+shortCondition = ta.crossunder(close, supplyZoneHigh) and bearishEngulfing and atrValue > atrSMA
+
+// Stop Loss & Take Profit
+longSL = demandZoneLow - (atrValue * 0.8) // Tighter SL for better RR
+longTP = close + (atrValue * 3.0)
+shortSL = supplyZoneHigh + (atrValue * 0.8)
+shortTP = close - (atrValue * 3.0)
+
+// Execute Trades
+if longCondition
+    strategy.entry("Long", strategy.long)
+    strategy.exit("Long TP/SL", from_entry="Long", limit=longTP, stop=longSL)
+
+if shortCondition
+    strategy.entry("Short", strategy.short)
+    strategy.exit("Short TP/SL", from_entry="Short", limit=shortTP, stop=shortSL)
+
+// Display Zones using Lines Instead of Plot
+var line supplyLineHigh = na
+var line supplyLineLow = na
+var line demandLineHigh = na
+var line demandLineLow = na
+
+line.delete(supplyLineHigh)
+line.delete(supplyLineLow)
+line.delete(demandLineHigh)
+line.delete(demandLineLow)
+
+supplyLineHigh := line.new(x1=bar_index[1], y1=supplyZoneHigh, x2=bar_index, y2=supplyZoneHigh, width=2, color=color.red, style=line.style_dotted)
+supplyLineLow := line.new(x1=bar_index[1], y1=supplyZoneLow, x2=bar_index, y2=supplyZoneLow, width=2, color=color.red, style=line.style_dotted)
+demandLineHigh := line.new(x1=bar_index[1], y1=demandZoneHigh, x2=bar_index, y2=demandZoneHigh, width=2, color=color.green, style=line.style_dotted)
+demandLineLow := line.new(x1=bar_index[1], y1=demandZoneLow, x2=bar_index, y2=demandZoneLow, width=2, color=color.green, style=line.style_dotted)
+
+// Performance Tracking Metrics
+totalTrades = strategy.opentrades + strategy.closedtrades
+winTrades = strategy.wintrades
+lossTrades = strategy.losstrades
+winRate = winTrades / totalTrades * 100
+netProfit = strategy.netprofit
+
+table perfTable = table.new(position=position.top_right, columns=1, rows=4, border_width=1)
+table.cell(perfTable, 0, 0, "Total Trades: " + str.tostring(totalTrades))
+table.cell(perfTable, 0, 1, "Win Rate: " + str.tostring(winRate, "#.##") + "%")
+table.cell(perfTable, 0, 2, "Net Profit: $" + str.tostring(netProfit, "#.##"))
+table.cell(perfTable, 0, 3, "Winning Trades: " + str.tostring(winTrades))
