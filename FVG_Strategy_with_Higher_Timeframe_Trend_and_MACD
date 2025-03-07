@@ -1,0 +1,88 @@
+//@version=5
+strategy("FVG Strategy with Higher Timeframe Trend and MACD", overlay=true, default_qty_type=strategy.percent_of_equity, default_qty_value=10)
+
+// Parameters for Fair Value Gap (FVG) and Moving Average (MA)
+fvg_length = input.int(5, title="Fair Value Gap Length", minval=1)
+ma_length = input.int(50, title="50-period Moving Average Length")
+risk_reward_ratio = input.float(2.0, title="Risk to Reward Ratio", minval=1.0)  // 2:1 Risk to Reward ratio
+trend_ma_length = input.int(50, title="Trend MA Length (for higher timeframe)", minval=1)  // MA for trend filter
+
+// Parameters for RSI and MACD Filters
+rsi_length = input.int(14, title="RSI Length")
+rsi_threshold = input.int(50, title="RSI Threshold", minval=0, maxval=100)  // Default threshold for momentum (50)
+macd_short_length = input.int(12, title="MACD Short Length")
+macd_long_length = input.int(26, title="MACD Long Length")
+macd_signal_length = input.int(9, title="MACD Signal Length")
+
+// Fair Value Gap Detection
+fvg_up = low[1] > high
+fvg_down = high[1] < low
+
+// 50-period Moving Average (MA) for Entry Conditions
+ma = ta.sma(close, ma_length)
+
+// Higher timeframe trend filter (using 50-period MA on 1-hour chart)
+higher_timeframe_ma = request.security(syminfo.tickerid, "60", ta.sma(close, trend_ma_length))
+
+// RSI Momentum Filter
+rsi = ta.rsi(close, rsi_length)
+
+// MACD Filter for momentum confirmation
+[macd_line, signal_line, _] = ta.macd(close, macd_short_length, macd_long_length, macd_signal_length)
+macd_bullish = macd_line > signal_line
+macd_bearish = macd_line < signal_line
+
+// Entry conditions with trend filter, RSI filter, and MACD filter
+long_condition = fvg_up and close > ma and close > higher_timeframe_ma and rsi > rsi_threshold and macd_bullish  // Long only if RSI > 50 and MACD bullish
+short_condition = fvg_down and close < ma and close < higher_timeframe_ma and rsi < rsi_threshold and macd_bearish  // Short only if RSI < 50 and MACD bearish
+
+// Market Structure Shift (MSS) - defining previous swing high/low
+prev_swing_high = ta.highest(high, 5)[1]
+prev_swing_low = ta.lowest(low, 5)[1]
+
+// Exit condition based on MSS
+long_exit_condition = low < prev_swing_low
+short_exit_condition = high > prev_swing_high
+
+// Trailing Stop - use ATR (Average True Range) for trailing stop logic
+atr_value = ta.atr(14)  // ATR to measure volatility and trailing stop distance
+
+// Entry prices
+long_entry_price = strategy.position_avg_price
+short_entry_price = strategy.position_avg_price
+
+// Take profit and stop loss levels based on market structure and ATR
+long_stop_loss = prev_swing_low  // Exit if price breaks below the previous swing low
+short_stop_loss = prev_swing_high  // Exit if price breaks above the previous swing high
+
+long_take_profit = long_entry_price + (long_entry_price - long_stop_loss) * risk_reward_ratio  // 2:1 risk-to-reward ratio
+short_take_profit = short_entry_price - (short_stop_loss - short_entry_price) * risk_reward_ratio  // 2:1 risk-to-reward ratio
+
+// Trailing stop: After price moves in the favor of the position, activate trailing stop
+long_trailing_stop = long_entry_price + atr_value * 1.5  // Trailing stop, 1.5x ATR for long
+short_trailing_stop = short_entry_price - atr_value * 1.5  // Trailing stop, 1.5x ATR for short
+
+// Plotting FVG signals and MA
+plotshape(series=fvg_up, location=location.belowbar, color=color.green, style=shape.labelup, title="Bullish FVG")
+plotshape(series=fvg_down, location=location.abovebar, color=color.red, style=shape.labeldown, title="Bearish FVG")
+plot(ma, color=color.blue, title="50-period MA")
+plot(higher_timeframe_ma, color=color.orange, title="Higher Timeframe Trend MA")
+hline(rsi_threshold, "RSI Threshold", color=color.purple)
+
+// Strategy execution (based on FVG, MA, trend filter, RSI, and MACD)
+if (long_condition)
+    strategy.entry("Long", strategy.long)
+
+if (short_condition)
+    strategy.entry("Short", strategy.short)
+
+// Exit conditions with trailing stop
+if (long_exit_condition)
+    strategy.close("Long", comment="Exit due to MSS")
+
+if (short_exit_condition)
+    strategy.close("Short", comment="Exit due to MSS")
+
+// Apply Trailing Stop and Take Profit
+strategy.exit("Long Exit", "Long", stop=long_trailing_stop, limit=long_take_profit)
+strategy.exit("Short Exit", "Short", stop=short_trailing_stop, limit=short_take_profit)
