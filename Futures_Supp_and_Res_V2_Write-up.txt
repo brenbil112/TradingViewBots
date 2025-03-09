@@ -1,0 +1,60 @@
+Step-by-Step Guide to Manually Emulating the Strategy
+
+1. Identify Key Support & Resistance Levels (Higher Timeframe - 15 min)
+Find the lowest low of the last 15 minutes.
+Find the highest high of the last 15 minutes.
+These levels act as dynamic support and resistance zones.
+
+2. Detect Breakdowns & Breakouts on the 1-Minute Chart
+Breakdown: Price crosses below the 15-min low and closes below it.
+Breakout: Price crosses above the 15-min high and closes above it.
+
+3. Confirm Momentum & Volatility
+Use RSI (14):
+Bearish Momentum: RSI < 35 and price is below the 15-min low.
+Bullish Momentum: RSI > 65 and price is above the 15-min high.
+
+Use ATR (14):
+ATR must be greater than its 14-period average to confirm sufficient volatility.
+
+4. Trend Confirmation Using EMAs
+9 EMA (Fast) & 50 EMA (Slow):
+Short trade: Price is below both EMAs.
+Long trade: Price is above both EMAs.
+
+Volume Confirmation:
+Current volume must be above its 20-period moving average.
+
+5. Entry Rules
+
+Short Entry:
+Breakdown confirmed.
+RSI < 35, strong bearish momentum.
+ATR > its 14-period SMA (high volatility).
+Price is below both 9 EMA and 50 EMA.
+Volume is above its 20-period moving average.
+
+Long Entry:
+Breakout confirmed.
+RSI > 65, strong bullish momentum.
+ATR > its 14-period SMA (high volatility).
+Price is above both 9 EMA and 50 EMA.
+Volume is above its 20-period moving average.
+
+6. Stop-Loss & Take-Profit
+Short Trade:
+Stop-loss: Set slightly above the highest high of the last 5 bars + ATR * 0.2.
+Take-profit: Set at current price - ATR * 2.0.
+
+Long Trade:
+Stop-loss: Set slightly below the lowest low of the last 5 bars - ATR * 0.2.
+Take-profit: Set at current price + ATR * 2.0.
+
+7. Execution & Trade Management
+
+Mark entries with a down arrow (▼) for shorts and an up arrow (▲) for longs.
+Exit trades at either stop-loss or take-profit levels.
+Monitor volume and momentum to ensure market conditions remain valid for your trade.
+If market conditions change, consider manual exit before stop-loss is hit.
+
+By following these steps, you can manually execute trades using the same logic as the automated strategy. Consistently apply these rules and track performance to optimize your trading decisions!
