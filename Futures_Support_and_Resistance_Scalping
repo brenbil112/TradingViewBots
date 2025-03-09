@@ -1,0 +1,40 @@
+//@version=5
+strategy("Support & Resistance Scalping", overlay=true)
+
+// Identify Higher Timeframe Support & Resistance Levels
+htf = "15"
+htfLow = request.security(syminfo.tickerid, htf, ta.lowest(low, 15))
+htfHigh = request.security(syminfo.tickerid, htf, ta.highest(high, 15))
+
+// Detect Breakdown & Breakout on 1-Minute Chart with Confirmation
+breakdownConfirmed = ta.crossunder(close, htfLow) and close < htfLow
+breakoutConfirmed = ta.crossover(close, htfHigh) and close > htfHigh
+
+// Momentum Confirmation (RSI and ATR for Volatility)
+rsiValue = ta.rsi(close, 14)
+atr = ta.atr(14)
+strongDownMomentum = rsiValue < 40 and close < htfLow - atr * 0.3
+strongUpMomentum = rsiValue > 60 and close > htfHigh + atr * 0.3
+
+// Entry Conditions: Confirmed Breakdown/Breakout with Momentum and Volume
+shortCondition = breakdownConfirmed and strongDownMomentum
+longCondition = breakoutConfirmed and strongUpMomentum
+
+// Dynamic Stop-Loss & Take-Profit Adjustments (Improved R:R 1.5:1)
+shortSL = ta.highest(high, 5) + atr * 0.8
+shortTP = close - atr * 1.5
+longSL = ta.lowest(low, 5) - atr * 0.8
+longTP = close + atr * 1.5
+
+// Execute Trades with Entry and Exit Markers
+if (shortCondition)
+    strategy.entry("Short", strategy.short)
+    label.new(bar_index, close, "▼", color=color.red, textcolor=color.white, size=size.small)
+    strategy.exit("Take Profit Short", from_entry="Short", limit=shortTP, stop=shortSL)
+    label.new(bar_index, shortTP, "▲", color=color.green, textcolor=color.white, size=size.small)
+
+if (longCondition)
+    strategy.entry("Long", strategy.long)
+    label.new(bar_index, close, "▲", color=color.green, textcolor=color.white, size=size.small)
+    strategy.exit("Take Profit Long", from_entry="Long", limit=longTP, stop=longSL)
+    label.new(bar_index, longTP, "▼", color=color.red, textcolor=color.white, size=size.small)
